@@ -1,0 +1,12 @@
+### Create Checking Account
+POST http://localhost:8080/api/accounts
+Content-Type: application/json
+
+{
+  "name": "Chase Checking",
+  "accountType": "CHECKING",
+  "institutionName": "Chase",
+  "currentBalance": 5000.00,
+  "currency": "USD",
+  "active": true
+}
