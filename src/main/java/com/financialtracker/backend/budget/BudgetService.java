@@ -25,6 +25,25 @@ public class BudgetService {
         return toBudgetResponse(savedBudget);
     }
 
+    public java.util.List<BudgetResponse> getAllBudgets() {
+
+        return budgetRepository.findAll()
+                .stream()
+                .map(this::toBudgetResponse)
+                .toList();
+    }
+
+    public BudgetResponse getBudgetById(Long id) {
+
+        Budget budget = budgetRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Budget with id " + id + " not found"
+                        ));
+
+        return toBudgetResponse(budget);
+    }
+
     private BudgetResponse toBudgetResponse(Budget budget) {
 
         BudgetResponse response = new BudgetResponse();
