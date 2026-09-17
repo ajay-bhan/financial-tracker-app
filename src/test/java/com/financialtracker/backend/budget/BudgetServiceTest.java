@@ -284,4 +284,26 @@ class BudgetServiceTest {
         verify(budgetRepository).findById(1L);
         verify(budgetRepository).save(budget);
     }
+    @Test
+    void deactivateBudget_shouldThrowExceptionWhenBudgetDoesNotExist() {
+
+        when(budgetRepository.findById(999L))
+                .thenReturn(java.util.Optional.empty());
+
+        BudgetNotFoundException exception =
+                assertThrows(
+                        BudgetNotFoundException.class,
+                        () -> budgetService.deactivateBudget(999L)
+                );
+
+        assertEquals(
+                "Budget with id 999 not found",
+                exception.getMessage()
+        );
+
+        verify(budgetRepository).findById(999L);
+
+        verify(budgetRepository, never())
+                .save(any(Budget.class));
+    }
 }
