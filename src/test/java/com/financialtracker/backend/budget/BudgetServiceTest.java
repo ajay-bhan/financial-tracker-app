@@ -142,4 +142,146 @@ class BudgetServiceTest {
 
         verify(budgetRepository).findById(1L);
     }
+
+    @Test
+    void getBudgetById_shouldThrowExceptionWhenBudgetDoesNotExist() {
+
+        when(budgetRepository.findById(999L))
+                .thenReturn(java.util.Optional.empty());
+
+        BudgetNotFoundException exception =
+                assertThrows(
+                        BudgetNotFoundException.class,
+                        () -> budgetService.getBudgetById(999L)
+                );
+
+        assertEquals(
+                "Budget with id 999 not found",
+                exception.getMessage()
+        );
+
+        verify(budgetRepository).findById(999L);
+    }
+
+    @Test
+    void updateBudget_shouldUpdateBudgetSuccessfully() {
+
+        Budget existingBudget = new Budget();
+        existingBudget.setId(1L);
+        existingBudget.setCategory("Food & Groceries");
+        existingBudget.setMonthlyLimit(new BigDecimal("500.00"));
+        existingBudget.setMonth(YearMonth.of(2026, 9));
+        existingBudget.setActive(true);
+
+        BudgetRequest request = new BudgetRequest();
+        request.setCategory("Food & Groceries");
+        request.setMonthlyLimit(new BigDecimal("600.00"));
+        request.setMonth(YearMonth.of(2026, 9));
+
+        Budget updatedBudget = new Budget();
+        updatedBudget.setId(1L);
+        updatedBudget.setCategory("Food & Groceries");
+        updatedBudget.setMonthlyLimit(new BigDecimal("600.00"));
+        updatedBudget.setMonth(YearMonth.of(2026, 9));
+        updatedBudget.setActive(true);
+
+        when(budgetRepository.findById(1L))
+                .thenReturn(java.util.Optional.of(existingBudget));
+
+        when(budgetRepository.save(any(Budget.class)))
+                .thenReturn(updatedBudget);
+
+        BudgetResponse response =
+                budgetService.updateBudget(1L, request);
+
+        assertEquals(1L, response.getId());
+        assertEquals(
+                "Food & Groceries",
+                response.getCategory()
+        );
+        assertEquals(
+                new BigDecimal("600.00"),
+                response.getMonthlyLimit()
+        );
+        assertEquals(
+                YearMonth.of(2026, 9),
+                response.getMonth()
+        );
+        assertTrue(response.isActive());
+
+        verify(budgetRepository).findById(1L);
+        verify(budgetRepository).save(existingBudget);
+    }
+    @Test
+    void updateBudget_shouldThrowExceptionWhenBudgetDoesNotExist() {
+
+        BudgetRequest request = new BudgetRequest();
+        request.setCategory("Food & Groceries");
+        request.setMonthlyLimit(new BigDecimal("600.00"));
+        request.setMonth(YearMonth.of(2026, 9));
+
+        when(budgetRepository.findById(999L))
+                .thenReturn(java.util.Optional.empty());
+
+        BudgetNotFoundException exception =
+                assertThrows(
+                        BudgetNotFoundException.class,
+                        () -> budgetService.updateBudget(999L, request)
+                );
+
+        assertEquals(
+                "Budget with id 999 not found",
+                exception.getMessage()
+        );
+
+        verify(budgetRepository).findById(999L);
+
+        verify(budgetRepository, never())
+                .save(any(Budget.class));
+    }
+
+    @Test
+    void deactivateBudget_shouldDeactivateBudgetSuccessfully() {
+
+        Budget budget = new Budget();
+        budget.setId(1L);
+        budget.setCategory("Food & Groceries");
+        budget.setMonthlyLimit(new BigDecimal("500.00"));
+        budget.setMonth(YearMonth.of(2026, 9));
+        budget.setActive(true);
+
+        Budget deactivatedBudget = new Budget();
+        deactivatedBudget.setId(1L);
+        deactivatedBudget.setCategory("Food & Groceries");
+        deactivatedBudget.setMonthlyLimit(new BigDecimal("500.00"));
+        deactivatedBudget.setMonth(YearMonth.of(2026, 9));
+        deactivatedBudget.setActive(false);
+
+        when(budgetRepository.findById(1L))
+                .thenReturn(java.util.Optional.of(budget));
+
+        when(budgetRepository.save(any(Budget.class)))
+                .thenReturn(deactivatedBudget);
+
+        BudgetResponse response =
+                budgetService.deactivateBudget(1L);
+
+        assertEquals(1L, response.getId());
+        assertEquals(
+                "Food & Groceries",
+                response.getCategory()
+        );
+        assertEquals(
+                new BigDecimal("500.00"),
+                response.getMonthlyLimit()
+        );
+        assertEquals(
+                YearMonth.of(2026, 9),
+                response.getMonth()
+        );
+        assertFalse(response.isActive());
+
+        verify(budgetRepository).findById(1L);
+        verify(budgetRepository).save(budget);
+    }
 }

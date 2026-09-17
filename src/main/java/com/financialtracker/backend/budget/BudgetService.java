@@ -36,12 +36,34 @@ public class BudgetService {
     public BudgetResponse getBudgetById(Long id) {
 
         Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Budget with id " + id + " not found"
-                        ));
+                .orElseThrow(() -> new BudgetNotFoundException(id));
 
         return toBudgetResponse(budget);
+    }
+    public BudgetResponse updateBudget(Long id, BudgetRequest request) {
+
+        Budget budget = budgetRepository.findById(id)
+                .orElseThrow(() -> new BudgetNotFoundException(id));
+
+        budget.setCategory(request.getCategory());
+        budget.setMonthlyLimit(request.getMonthlyLimit());
+        budget.setMonth(request.getMonth());
+
+        Budget savedBudget = budgetRepository.save(budget);
+
+        return toBudgetResponse(savedBudget);
+    }
+
+    public BudgetResponse deactivateBudget(Long id) {
+
+        Budget budget = budgetRepository.findById(id)
+                .orElseThrow(() -> new BudgetNotFoundException(id));
+
+        budget.setActive(false);
+
+        Budget savedBudget = budgetRepository.save(budget);
+
+        return toBudgetResponse(savedBudget);
     }
 
     private BudgetResponse toBudgetResponse(Budget budget) {
