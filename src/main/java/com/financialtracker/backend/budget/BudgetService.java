@@ -13,6 +13,16 @@ public class BudgetService {
 
     public BudgetResponse createBudget(BudgetRequest request) {
 
+        if (budgetRepository.existsByCategoryIgnoreCaseAndMonth(
+                request.getCategory(),
+                request.getMonth())) {
+
+            throw new BudgetAlreadyExistsException(
+                    request.getCategory(),
+                    request.getMonth()
+            );
+        }
+
         Budget budget = new Budget();
 
         budget.setCategory(request.getCategory());
@@ -44,6 +54,17 @@ public class BudgetService {
 
         Budget budget = budgetRepository.findById(id)
                 .orElseThrow(() -> new BudgetNotFoundException(id));
+
+        if (budgetRepository.existsByCategoryIgnoreCaseAndMonthAndIdNot(
+                request.getCategory(),
+                request.getMonth(),
+                id)) {
+
+            throw new BudgetAlreadyExistsException(
+                    request.getCategory(),
+                    request.getMonth()
+            );
+        }
 
         budget.setCategory(request.getCategory());
         budget.setMonthlyLimit(request.getMonthlyLimit());

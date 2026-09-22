@@ -1,6 +1,7 @@
 package com.financialtracker.backend.exception;
 
 import com.financialtracker.backend.account.AccountType;
+import com.financialtracker.backend.budget.BudgetAlreadyExistsException;
 import com.financialtracker.backend.budget.BudgetNotFoundException;
 import com.financialtracker.backend.category.CategoryAlreadyExistsException;
 import com.financialtracker.backend.category.CategoryNotFoundException;
@@ -144,6 +145,18 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.NOT_FOUND.value(),
+                exception.getMessage(),
+                null
+        );
+    }
+    @ExceptionHandler(BudgetAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleBudgetAlreadyExists(
+            BudgetAlreadyExistsException exception) {
+
+        return new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
                 exception.getMessage(),
                 null
         );

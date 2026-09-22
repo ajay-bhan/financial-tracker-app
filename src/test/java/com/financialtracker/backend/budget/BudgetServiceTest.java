@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -305,5 +306,56 @@ class BudgetServiceTest {
 
         verify(budgetRepository, never())
                 .save(any(Budget.class));
+    }
+    @Test
+    void createBudget_shouldThrowExceptionWhenDuplicateExists() {
+        BudgetRequest request = new BudgetRequest();
+        request.setCategory("Food & Groceries");
+        request.setMonthlyLimit(new BigDecimal("700.00"));
+        request.setMonth(YearMonth.of(2026, 9));
+
+        when(budgetRepository.existsByCategoryIgnoreCaseAndMonth(
+                "Food & Groceries",
+                YearMonth.of(2026, 9)
+        )).thenReturn(true);
+
+        assertThrows(
+                BudgetAlreadyExistsException.class,
+                () -> budgetService.createBudget(request)
+        );
+
+        verify(budgetRepository, never()).save(any(Budget.class));
+    }
+    @Test
+    void updateBudget_shouldThrowExceptionWhenDuplicateExists() {
+        Long budgetId = 2L;
+
+        Budget existingBudget = new Budget();
+        existingBudget.setId(budgetId);
+        existingBudget.setCategory("Transportation");
+        existingBudget.setMonthlyLimit(new BigDecimal("350.00"));
+        existingBudget.setMonth(YearMonth.of(2026, 9));
+        existingBudget.setActive(true);
+
+        BudgetRequest request = new BudgetRequest();
+        request.setCategory("Food & Groceries");
+        request.setMonthlyLimit(new BigDecimal("400.00"));
+        request.setMonth(YearMonth.of(2026, 9));
+
+        when(budgetRepository.findById(budgetId))
+                .thenReturn(Optional.of(existingBudget));
+
+        when(budgetRepository.existsByCategoryIgnoreCaseAndMonthAndIdNot(
+                "Food & Groceries",
+                YearMonth.of(2026, 9),
+                budgetId
+        )).thenReturn(true);
+
+        assertThrows(
+                BudgetAlreadyExistsException.class,
+                () -> budgetService.updateBudget(budgetId, request)
+        );
+
+        verify(budgetRepository, never()).save(any(Budget.class));
     }
 }
