@@ -1,2 +1,2 @@
-# financial-tracker-app
+# financial-tracking-app
 # financial-tracker-app
