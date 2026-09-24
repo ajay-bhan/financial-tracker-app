@@ -9,8 +9,36 @@ public class SavingsGoalResponse {
     private String name;
     private BigDecimal targetAmount;
     private BigDecimal currentAmount;
+    private BigDecimal remainingAmount;
+    private BigDecimal progressPercentage;
+    private BigDecimal requiredMonthlySavings;
+
+    public BigDecimal getRequiredMonthlySavings() {
+        return requiredMonthlySavings;
+    }
+
+    public void setRequiredMonthlySavings(BigDecimal requiredMonthlySavings) {
+        this.requiredMonthlySavings = requiredMonthlySavings;
+    }
+
     private LocalDate targetDate;
     private boolean active;
+
+    public BigDecimal getRemainingAmount() {
+        return remainingAmount;
+    }
+
+    public void setRemainingAmount(BigDecimal remainingAmount) {
+        this.remainingAmount = remainingAmount;
+    }
+
+    public BigDecimal getProgressPercentage() {
+        return progressPercentage;
+    }
+
+    public void setProgressPercentage(BigDecimal progressPercentage) {
+        this.progressPercentage = progressPercentage;
+    }
 
     public Long getId() {
         return id;
