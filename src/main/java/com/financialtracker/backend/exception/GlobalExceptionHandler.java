@@ -7,6 +7,7 @@ import com.financialtracker.backend.category.CategoryAlreadyExistsException;
 import com.financialtracker.backend.category.CategoryNotFoundException;
 import com.financialtracker.backend.common.ErrorResponse;
 import com.financialtracker.backend.account.AccountNotFoundException;
+import com.financialtracker.backend.savingsgoal.InvalidSavingsGoalException;
 import com.financialtracker.backend.savingsgoal.SavingsGoalNotFoundException;
 import com.financialtracker.backend.transaction.TransactionNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -172,6 +173,19 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
+                exception.getMessage(),
+                null
+        );
+    }
+
+    @ExceptionHandler(InvalidSavingsGoalException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidSavingsGoal(
+            InvalidSavingsGoalException exception) {
+
+        return new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
                 exception.getMessage(),
                 null
         );

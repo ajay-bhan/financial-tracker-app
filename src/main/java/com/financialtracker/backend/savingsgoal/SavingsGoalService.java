@@ -20,6 +20,11 @@ public class SavingsGoalService {
 
     public SavingsGoalResponse createSavingsGoal(SavingsGoalRequest request) {
 
+        if (request.getCurrentAmount().compareTo(request.getTargetAmount()) > 0) {
+            throw new InvalidSavingsGoalException(
+                    "Current amount cannot be greater than target amount"
+            );
+        }
         SavingsGoal savingsGoal = new SavingsGoal();
 
         savingsGoal.setName(request.getName());
@@ -48,10 +53,12 @@ public class SavingsGoalService {
         return toSavingsGoalResponse(savingsGoal);
     }
 
-    public SavingsGoalResponse updateSavingsGoal(
-            Long id,
-            SavingsGoalRequest request) {
-
+    public SavingsGoalResponse updateSavingsGoal(Long id, SavingsGoalRequest request) {
+        if (request.getCurrentAmount().compareTo(request.getTargetAmount()) > 0) {
+            throw new InvalidSavingsGoalException(
+                    "Current amount cannot be greater than target amount"
+            );
+        }
         SavingsGoal savingsGoal = savingsGoalRepository.findById(id)
                 .orElseThrow(() -> new SavingsGoalNotFoundException(id));
 

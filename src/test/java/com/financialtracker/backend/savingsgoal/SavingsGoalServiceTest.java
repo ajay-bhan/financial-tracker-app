@@ -337,4 +337,29 @@ class SavingsGoalServiceTest {
 
         verify(savingsGoalRepository).findById(goalId);
     }
+    @Test
+    void getSavingsGoalById_shouldCalculateRequiredMonthlySavings() {
+        Long goalId = 1L;
+
+        SavingsGoal goal = new SavingsGoal();
+        goal.setId(goalId);
+        goal.setName("Emergency Fund");
+        goal.setTargetAmount(new BigDecimal("12000.00"));
+        goal.setCurrentAmount(new BigDecimal("4000.00"));
+        goal.setTargetDate(java.time.LocalDate.of(2027, 12, 31));
+        goal.setActive(true);
+
+        when(savingsGoalRepository.findById(goalId))
+                .thenReturn(java.util.Optional.of(goal));
+
+        SavingsGoalResponse response =
+                savingsGoalService.getSavingsGoalById(goalId);
+
+        assertEquals(
+                new BigDecimal("500.00"),
+                response.getRequiredMonthlySavings()
+        );
+
+        verify(savingsGoalRepository).findById(goalId);
+    }
 }
