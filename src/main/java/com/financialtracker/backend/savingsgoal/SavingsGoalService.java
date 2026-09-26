@@ -150,4 +150,32 @@ public class SavingsGoalService {
 
         return response;
     }
+    public SavingsGoalResponse contributeToSavingsGoal(
+            Long id,
+            SavingsContributionRequest request) {
+
+        SavingsGoal savingsGoal =
+                savingsGoalRepository.findById(id)
+                        .orElseThrow(() ->
+                                new SavingsGoalNotFoundException(id));
+
+        BigDecimal newCurrentAmount =
+                savingsGoal.getCurrentAmount()
+                        .add(request.getAmount());
+
+        if (newCurrentAmount.compareTo(
+                savingsGoal.getTargetAmount()) > 0) {
+
+            throw new InvalidSavingsGoalException(
+                    "Contribution would exceed the target amount"
+            );
+        }
+
+        savingsGoal.setCurrentAmount(newCurrentAmount);
+
+        SavingsGoal savedGoal =
+                savingsGoalRepository.save(savingsGoal);
+
+        return toSavingsGoalResponse(savedGoal);
+    }
 }

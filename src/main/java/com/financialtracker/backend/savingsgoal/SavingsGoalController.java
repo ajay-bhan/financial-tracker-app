@@ -48,4 +48,12 @@ public class SavingsGoalController {
 
         return savingsGoalService.deactivateSavingsGoal(id);
     }
+
+    @PostMapping("/{id}/contribute")
+    public SavingsGoalResponse contributeToSavingsGoal(
+            @PathVariable Long id,
+            @Valid @RequestBody SavingsContributionRequest request) {
+
+        return savingsGoalService.contributeToSavingsGoal(id, request);
+    }
 }

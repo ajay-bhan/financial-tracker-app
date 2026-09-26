@@ -362,4 +362,140 @@ class SavingsGoalServiceTest {
 
         verify(savingsGoalRepository).findById(goalId);
     }
+    @Test
+    void createSavingsGoal_shouldThrowExceptionWhenCurrentAmountExceedsTargetAmount() {
+
+        request.setTargetAmount(new BigDecimal("10000.00"));
+        request.setCurrentAmount(new BigDecimal("15000.00"));
+
+        assertThrows(
+                InvalidSavingsGoalException.class,
+                () -> savingsGoalService.createSavingsGoal(request)
+        );
+
+        verify(savingsGoalRepository, never())
+                .save(any(SavingsGoal.class));
+    }
+    @Test
+    void updateSavingsGoal_shouldThrowExceptionWhenCurrentAmountExceedsTargetAmount() {
+
+        Long goalId = 1L;
+
+        SavingsGoalRequest updateRequest = new SavingsGoalRequest();
+        updateRequest.setName("Emergency Fund");
+        updateRequest.setTargetAmount(new BigDecimal("10000.00"));
+        updateRequest.setCurrentAmount(new BigDecimal("15000.00"));
+        updateRequest.setTargetDate(
+                java.time.LocalDate.of(2027, 12, 31)
+        );
+
+        assertThrows(
+                InvalidSavingsGoalException.class,
+                () -> savingsGoalService.updateSavingsGoal(
+                        goalId,
+                        updateRequest
+                )
+        );
+
+        verify(savingsGoalRepository, never())
+                .findById(goalId);
+
+        verify(savingsGoalRepository, never())
+                .save(any(SavingsGoal.class));
+    }
+    @Test
+    void contributeToSavingsGoal_shouldIncreaseCurrentAmountSuccessfully() {
+
+        Long goalId = 1L;
+
+        SavingsGoal goal = new SavingsGoal();
+        goal.setId(goalId);
+        goal.setName("Emergency Fund");
+        goal.setTargetAmount(new BigDecimal("12000.00"));
+        goal.setCurrentAmount(new BigDecimal("4000.00"));
+        goal.setTargetDate(
+                java.time.LocalDate.of(2027, 12, 31)
+        );
+        goal.setActive(true);
+
+        SavingsContributionRequest contributionRequest =
+                new SavingsContributionRequest();
+
+        contributionRequest.setAmount(
+                new BigDecimal("500.00")
+        );
+
+        when(savingsGoalRepository.findById(goalId))
+                .thenReturn(java.util.Optional.of(goal));
+
+        when(savingsGoalRepository.save(goal))
+                .thenReturn(goal);
+
+        SavingsGoalResponse response =
+                savingsGoalService.contributeToSavingsGoal(
+                        goalId,
+                        contributionRequest
+                );
+
+        assertEquals(
+                new BigDecimal("4500.00"),
+                response.getCurrentAmount()
+        );
+
+        assertEquals(
+                new BigDecimal("7500.00"),
+                response.getRemainingAmount()
+        );
+
+        assertEquals(
+                new BigDecimal("37.50"),
+                response.getProgressPercentage()
+        );
+
+        verify(savingsGoalRepository).findById(goalId);
+        verify(savingsGoalRepository).save(goal);
+    }
+
+    @Test
+    void contributeToSavingsGoal_shouldThrowExceptionWhenContributionExceedsTarget() {
+
+        Long goalId = 1L;
+
+        SavingsGoal goal = new SavingsGoal();
+        goal.setId(goalId);
+        goal.setName("Emergency Fund");
+        goal.setTargetAmount(new BigDecimal("12000.00"));
+        goal.setCurrentAmount(new BigDecimal("9500.00"));
+        goal.setTargetDate(
+                java.time.LocalDate.of(2027, 12, 31)
+        );
+        goal.setActive(true);
+
+        SavingsContributionRequest contributionRequest =
+                new SavingsContributionRequest();
+
+        contributionRequest.setAmount(
+                new BigDecimal("3000.00")
+        );
+
+        when(savingsGoalRepository.findById(goalId))
+                .thenReturn(java.util.Optional.of(goal));
+
+        assertThrows(
+                InvalidSavingsGoalException.class,
+                () -> savingsGoalService.contributeToSavingsGoal(
+                        goalId,
+                        contributionRequest
+                )
+        );
+
+        assertEquals(
+                new BigDecimal("9500.00"),
+                goal.getCurrentAmount()
+        );
+
+        verify(savingsGoalRepository).findById(goalId);
+        verify(savingsGoalRepository, never())
+                .save(any(SavingsGoal.class));
+    }
 }
