@@ -1,6 +1,10 @@
 package com.financialtracker.backend.savingsgoal;
 
+import com.financialtracker.backend.account.Account;
+import com.financialtracker.backend.account.AccountNotFoundException;
+import com.financialtracker.backend.account.AccountRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -12,9 +16,14 @@ public class SavingsGoalService {
 
     private final SavingsGoalRepository savingsGoalRepository;
     private final Clock clock;
+    private final AccountRepository accountRepository;
 
-    public SavingsGoalService(SavingsGoalRepository savingsGoalRepository, Clock clock) {
+    public SavingsGoalService(SavingsGoalRepository savingsGoalRepository,
+                              AccountRepository accountRepository,
+                              Clock clock) {
+
         this.savingsGoalRepository = savingsGoalRepository;
+        this.accountRepository = accountRepository;
         this.clock = clock;
     }
 
@@ -150,6 +159,7 @@ public class SavingsGoalService {
 
         return response;
     }
+    @Transactional
     public SavingsGoalResponse contributeToSavingsGoal(
             Long id,
             SavingsContributionRequest request) {
@@ -158,6 +168,12 @@ public class SavingsGoalService {
                 savingsGoalRepository.findById(id)
                         .orElseThrow(() ->
                                 new SavingsGoalNotFoundException(id));
+        Account account =
+                accountRepository.findById(request.getAccountId())
+                        .orElseThrow(() ->
+                                new AccountNotFoundException(
+                                        request.getAccountId()
+                                ));
 
         BigDecimal newCurrentAmount =
                 savingsGoal.getCurrentAmount()
@@ -171,7 +187,21 @@ public class SavingsGoalService {
             );
         }
 
+        if (account.getCurrentBalance().compareTo(request.getAmount()) < 0) {
+            throw new InsufficientAccountBalanceException(
+                    "Insufficient account balance for this contribution"
+            );
+        }
+
         savingsGoal.setCurrentAmount(newCurrentAmount);
+
+        BigDecimal newAccountBalance =
+                account.getCurrentBalance()
+                        .subtract(request.getAmount());
+
+        account.setCurrentBalance(newAccountBalance);
+
+        accountRepository.save(account);
 
         SavingsGoal savedGoal =
                 savingsGoalRepository.save(savingsGoal);

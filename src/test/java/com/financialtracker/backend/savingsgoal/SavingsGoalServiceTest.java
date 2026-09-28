@@ -1,5 +1,8 @@
 package com.financialtracker.backend.savingsgoal;
 
+import com.financialtracker.backend.account.Account;
+import com.financialtracker.backend.account.AccountRepository;
+import com.financialtracker.backend.account.AccountType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +19,9 @@ class SavingsGoalServiceTest {
 
     @Mock
     private SavingsGoalRepository savingsGoalRepository;
+
+    @Mock
+    private AccountRepository accountRepository;
 
     private SavingsGoalService savingsGoalService;
 
@@ -34,6 +40,7 @@ class SavingsGoalServiceTest {
         savingsGoalService =
                 new SavingsGoalService(
                         savingsGoalRepository,
+                        accountRepository,
                         clock
                 );
 
@@ -418,6 +425,15 @@ class SavingsGoalServiceTest {
         );
         goal.setActive(true);
 
+        Account account = new Account();
+        account.setId(5L);
+        account.setName("Chase Checking");
+        account.setAccountType(AccountType.CHECKING);
+        account.setInstitutionName("Chase");
+        account.setCurrentBalance(new BigDecimal("5000.00"));
+        account.setCurrency("USD");
+        account.setActive(true);
+
         SavingsContributionRequest contributionRequest =
                 new SavingsContributionRequest();
 
@@ -425,8 +441,13 @@ class SavingsGoalServiceTest {
                 new BigDecimal("500.00")
         );
 
+        contributionRequest.setAccountId(5L);
+
         when(savingsGoalRepository.findById(goalId))
                 .thenReturn(java.util.Optional.of(goal));
+
+        when(accountRepository.findById(5L))
+                .thenReturn(java.util.Optional.of(account));
 
         when(savingsGoalRepository.save(goal))
                 .thenReturn(goal);
@@ -451,10 +472,17 @@ class SavingsGoalServiceTest {
                 new BigDecimal("37.50"),
                 response.getProgressPercentage()
         );
+        assertEquals(
+                new BigDecimal("4500.00"),
+                account.getCurrentBalance()
+        );
 
         verify(savingsGoalRepository).findById(goalId);
+        verify(accountRepository).findById(5L);
+        verify(accountRepository).save(account);
         verify(savingsGoalRepository).save(goal);
     }
+
 
     @Test
     void contributeToSavingsGoal_shouldThrowExceptionWhenContributionExceedsTarget() {
@@ -471,6 +499,15 @@ class SavingsGoalServiceTest {
         );
         goal.setActive(true);
 
+        Account account = new Account();
+        account.setId(5L);
+        account.setName("Chase Checking");
+        account.setAccountType(AccountType.CHECKING);
+        account.setInstitutionName("Chase");
+        account.setCurrentBalance(new BigDecimal("5000.00"));
+        account.setCurrency("USD");
+        account.setActive(true);
+
         SavingsContributionRequest contributionRequest =
                 new SavingsContributionRequest();
 
@@ -478,8 +515,13 @@ class SavingsGoalServiceTest {
                 new BigDecimal("3000.00")
         );
 
+        contributionRequest.setAccountId(5L);
+
         when(savingsGoalRepository.findById(goalId))
                 .thenReturn(java.util.Optional.of(goal));
+
+        when(accountRepository.findById(5L))
+                .thenReturn(java.util.Optional.of(account));
 
         assertThrows(
                 InvalidSavingsGoalException.class,
@@ -495,7 +537,77 @@ class SavingsGoalServiceTest {
         );
 
         verify(savingsGoalRepository).findById(goalId);
+        verify(accountRepository).findById(5L);
+
         verify(savingsGoalRepository, never())
                 .save(any(SavingsGoal.class));
     }
+
+    @Test
+    void contributeToSavingsGoal_shouldThrowExceptionWhenAccountBalanceIsInsufficient() {
+
+        Long goalId = 1L;
+
+        SavingsGoal goal = new SavingsGoal();
+        goal.setId(goalId);
+        goal.setName("Emergency Fund");
+        goal.setTargetAmount(new BigDecimal("12000.00"));
+        goal.setCurrentAmount(new BigDecimal("4000.00"));
+        goal.setTargetDate(
+                java.time.LocalDate.of(2027, 12, 31)
+        );
+        goal.setActive(true);
+
+        Account account = new Account();
+        account.setId(5L);
+        account.setName("Chase Checking");
+        account.setAccountType(AccountType.CHECKING);
+        account.setInstitutionName("Chase");
+        account.setCurrentBalance(new BigDecimal("100.00"));
+        account.setCurrency("USD");
+        account.setActive(true);
+
+        SavingsContributionRequest contributionRequest =
+                new SavingsContributionRequest();
+
+        contributionRequest.setAmount(
+                new BigDecimal("500.00")
+        );
+
+        contributionRequest.setAccountId(5L);
+
+        when(savingsGoalRepository.findById(goalId))
+                .thenReturn(java.util.Optional.of(goal));
+
+        when(accountRepository.findById(5L))
+                .thenReturn(java.util.Optional.of(account));
+
+        assertThrows(
+                InsufficientAccountBalanceException.class,
+                () -> savingsGoalService.contributeToSavingsGoal(
+                        goalId,
+                        contributionRequest
+                )
+        );
+
+        assertEquals(
+                new BigDecimal("4000.00"),
+                goal.getCurrentAmount()
+        );
+
+        assertEquals(
+                new BigDecimal("100.00"),
+                account.getCurrentBalance()
+        );
+
+        verify(savingsGoalRepository).findById(goalId);
+        verify(accountRepository).findById(5L);
+
+        verify(accountRepository, never())
+                .save(any(Account.class));
+
+        verify(savingsGoalRepository, never())
+                .save(any(SavingsGoal.class));
+    }
+
 }

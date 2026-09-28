@@ -7,10 +7,12 @@ import com.financialtracker.backend.category.CategoryAlreadyExistsException;
 import com.financialtracker.backend.category.CategoryNotFoundException;
 import com.financialtracker.backend.common.ErrorResponse;
 import com.financialtracker.backend.account.AccountNotFoundException;
+import com.financialtracker.backend.savingsgoal.InsufficientAccountBalanceException;
 import com.financialtracker.backend.savingsgoal.InvalidSavingsGoalException;
 import com.financialtracker.backend.savingsgoal.SavingsGoalNotFoundException;
 import com.financialtracker.backend.transaction.TransactionNotFoundException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -189,5 +191,18 @@ public class GlobalExceptionHandler {
                 exception.getMessage(),
                 null
         );
+    }
+    @ExceptionHandler(InsufficientAccountBalanceException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientAccountBalance(
+            InsufficientAccountBalanceException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(
+                        LocalDateTime.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        ex.getMessage(),
+                        null
+                ));
     }
 }
