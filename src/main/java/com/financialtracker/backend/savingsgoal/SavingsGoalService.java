@@ -3,11 +3,17 @@ package com.financialtracker.backend.savingsgoal;
 import com.financialtracker.backend.account.Account;
 import com.financialtracker.backend.account.AccountNotFoundException;
 import com.financialtracker.backend.account.AccountRepository;
+import com.financialtracker.backend.transaction.Transaction;
+import com.financialtracker.backend.transaction.TransactionRepository;
+import com.financialtracker.backend.transaction.TransactionStatus;
+import com.financialtracker.backend.transaction.TransactionType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 
@@ -17,14 +23,16 @@ public class SavingsGoalService {
     private final SavingsGoalRepository savingsGoalRepository;
     private final Clock clock;
     private final AccountRepository accountRepository;
+    private final TransactionRepository transactionRepository;
 
     public SavingsGoalService(SavingsGoalRepository savingsGoalRepository,
                               AccountRepository accountRepository,
-                              Clock clock) {
+                              Clock clock, TransactionRepository transactionRepository) {
 
         this.savingsGoalRepository = savingsGoalRepository;
         this.accountRepository = accountRepository;
         this.clock = clock;
+        this.transactionRepository = transactionRepository;
     }
 
     public SavingsGoalResponse createSavingsGoal(SavingsGoalRequest request) {
@@ -168,6 +176,7 @@ public class SavingsGoalService {
                 savingsGoalRepository.findById(id)
                         .orElseThrow(() ->
                                 new SavingsGoalNotFoundException(id));
+
         Account account =
                 accountRepository.findById(request.getAccountId())
                         .orElseThrow(() ->
@@ -188,20 +197,40 @@ public class SavingsGoalService {
         }
 
         if (account.getCurrentBalance().compareTo(request.getAmount()) < 0) {
+
             throw new InsufficientAccountBalanceException(
                     "Insufficient account balance for this contribution"
             );
         }
 
+        // Update savings goal
         savingsGoal.setCurrentAmount(newCurrentAmount);
 
+        // Deduct contribution from account
         BigDecimal newAccountBalance =
                 account.getCurrentBalance()
                         .subtract(request.getAmount());
 
         account.setCurrentBalance(newAccountBalance);
 
+        // Record contribution as a transaction
+        Transaction transaction = new Transaction();
+
+        transaction.setAccount(account);
+        transaction.setTransferAccount(null);
+        transaction.setTransactionType(TransactionType.EXPENSE);
+        transaction.setStatus(TransactionStatus.ACTIVE);
+        transaction.setAmount(request.getAmount());
+        transaction.setCategory("Savings");
+        transaction.setDescription(
+                "Contribution to " + savingsGoal.getName()
+        );
+        transaction.setTransactionDate(LocalDate.now(clock));
+        transaction.setCreatedAt(LocalDateTime.now(clock));
+
+        // Save changes
         accountRepository.save(account);
+        transactionRepository.save(transaction);
 
         SavingsGoal savedGoal =
                 savingsGoalRepository.save(savingsGoal);

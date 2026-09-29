@@ -3,11 +3,24 @@ package com.financialtracker.backend.savingsgoal;
 import com.financialtracker.backend.account.Account;
 import com.financialtracker.backend.account.AccountRepository;
 import com.financialtracker.backend.account.AccountType;
+import com.financialtracker.backend.transaction.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.financialtracker.backend.transaction.Transaction;
+import com.financialtracker.backend.transaction.TransactionStatus;
+import com.financialtracker.backend.transaction.TransactionType;
+import org.mockito.ArgumentCaptor;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
 
@@ -22,6 +35,9 @@ class SavingsGoalServiceTest {
 
     @Mock
     private AccountRepository accountRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
 
     private SavingsGoalService savingsGoalService;
 
@@ -41,7 +57,8 @@ class SavingsGoalServiceTest {
                 new SavingsGoalService(
                         savingsGoalRepository,
                         accountRepository,
-                        clock
+                        clock,
+                        transactionRepository
                 );
 
         request = new SavingsGoalRequest();
@@ -602,6 +619,166 @@ class SavingsGoalServiceTest {
 
         verify(savingsGoalRepository).findById(goalId);
         verify(accountRepository).findById(5L);
+
+        verify(accountRepository, never())
+                .save(any(Account.class));
+
+        verify(savingsGoalRepository, never())
+                .save(any(SavingsGoal.class));
+    }
+
+    @Test
+    void contributeToSavingsGoalShouldCreateTransaction() {
+        Long goalId = 1L;
+
+        SavingsGoal goal = new SavingsGoal();
+        goal.setId(goalId);
+        goal.setName("Emergency Fund");
+        goal.setTargetAmount(new BigDecimal("12000.00"));
+        goal.setCurrentAmount(new BigDecimal("4000.00"));
+        goal.setTargetDate(LocalDate.of(2027, 12, 31));
+        goal.setActive(true);
+
+        Account account = new Account();
+        account.setId(5L);
+        account.setCurrentBalance(new BigDecimal("5000.00"));
+
+        SavingsContributionRequest contributionRequest =
+                new SavingsContributionRequest();
+        contributionRequest.setAmount(new BigDecimal("500.00"));
+        contributionRequest.setAccountId(5L);
+
+        when(savingsGoalRepository.findById(goalId))
+                .thenReturn(Optional.of(goal));
+
+        when(accountRepository.findById(5L))
+                .thenReturn(Optional.of(account));
+
+        when(savingsGoalRepository.save(any(SavingsGoal.class)))
+                .thenReturn(goal);
+
+        when(accountRepository.save(any(Account.class)))
+                .thenReturn(account);
+
+        Transaction transaction = new Transaction();
+        transaction.setId(1L);
+
+        when(transactionRepository.save(any(Transaction.class)))
+                .thenReturn(transaction);
+
+        savingsGoalService.contributeToSavingsGoal(
+                goalId,
+                contributionRequest
+        );
+
+        ArgumentCaptor<Transaction> transactionCaptor =
+                ArgumentCaptor.forClass(Transaction.class);
+
+        verify(transactionRepository).save(transactionCaptor.capture());
+
+        Transaction savedTransaction = transactionCaptor.getValue();
+
+        assertEquals(TransactionType.EXPENSE, savedTransaction.getTransactionType());
+        assertEquals(TransactionStatus.ACTIVE, savedTransaction.getStatus());
+        assertEquals(new BigDecimal("500.00"), savedTransaction.getAmount());
+        assertEquals("Savings", savedTransaction.getCategory());
+        assertEquals("Contribution to Emergency Fund",
+                savedTransaction.getDescription());
+        assertEquals(account, savedTransaction.getAccount());
+        assertNull(savedTransaction.getTransferAccount());
+        assertEquals(
+                LocalDate.of(2026, 9, 24),
+                savedTransaction.getTransactionDate()
+        );
+
+        assertEquals(
+                LocalDateTime.of(2026, 9, 24, 12, 0),
+                savedTransaction.getCreatedAt()
+        );
+    }
+
+    @Test
+    void contributeToSavingsGoalShouldNotCreateTransactionWhenContributionExceedsTarget() {
+        Long goalId = 1L;
+
+        SavingsGoal goal = new SavingsGoal();
+        goal.setId(goalId);
+        goal.setName("Emergency Fund");
+        goal.setTargetAmount(new BigDecimal("12000.00"));
+        goal.setCurrentAmount(new BigDecimal("11900.00"));
+        goal.setTargetDate(LocalDate.of(2027, 12, 31));
+        goal.setActive(true);
+
+        Account account = new Account();
+        account.setId(5L);
+        account.setCurrentBalance(new BigDecimal("5000.00"));
+
+        SavingsContributionRequest contributionRequest =
+                new SavingsContributionRequest();
+        contributionRequest.setAmount(new BigDecimal("200.00"));
+        contributionRequest.setAccountId(5L);
+
+        when(savingsGoalRepository.findById(goalId))
+                .thenReturn(Optional.of(goal));
+
+        when(accountRepository.findById(5L))
+                .thenReturn(Optional.of(account));
+
+        assertThrows(
+                InvalidSavingsGoalException.class,
+                () -> savingsGoalService.contributeToSavingsGoal(
+                        goalId,
+                        contributionRequest
+                )
+        );
+
+        verify(transactionRepository, never())
+                .save(any(Transaction.class));
+
+        verify(accountRepository, never())
+                .save(any(Account.class));
+
+        verify(savingsGoalRepository, never())
+                .save(any(SavingsGoal.class));
+    }
+
+    @Test
+    void contributeToSavingsGoalShouldNotCreateTransactionWhenAccountBalanceIsInsufficient() {
+        Long goalId = 1L;
+
+        SavingsGoal goal = new SavingsGoal();
+        goal.setId(goalId);
+        goal.setName("Emergency Fund");
+        goal.setTargetAmount(new BigDecimal("12000.00"));
+        goal.setCurrentAmount(new BigDecimal("10000.00"));
+        goal.setTargetDate(LocalDate.of(2027, 12, 31));
+        goal.setActive(true);
+
+        Account account = new Account();
+        account.setId(5L);
+        account.setCurrentBalance(new BigDecimal("50.00"));
+
+        SavingsContributionRequest contributionRequest =
+                new SavingsContributionRequest();
+        contributionRequest.setAmount(new BigDecimal("100.00"));
+        contributionRequest.setAccountId(5L);
+
+        when(savingsGoalRepository.findById(goalId))
+                .thenReturn(Optional.of(goal));
+
+        when(accountRepository.findById(5L))
+                .thenReturn(Optional.of(account));
+
+        assertThrows(
+                InsufficientAccountBalanceException.class,
+                () -> savingsGoalService.contributeToSavingsGoal(
+                        goalId,
+                        contributionRequest
+                )
+        );
+
+        verify(transactionRepository, never())
+                .save(any(Transaction.class));
 
         verify(accountRepository, never())
                 .save(any(Account.class));
